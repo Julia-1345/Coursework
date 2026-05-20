@@ -31,11 +31,10 @@ protected:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
-
 	afx_msg void OnBnClickedButton1();
 	afx_msg void OnBnClickedButtonFile();
 	afx_msg void OnBnClickedClear();
-
+	afx_msg void OnBnClickedButtonSave();
 	afx_msg void OnLbnSelchangeListHistory();
 
 	DECLARE_MESSAGE_MAP()

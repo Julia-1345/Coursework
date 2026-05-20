@@ -57,6 +57,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication2Dlg, CDialogEx)
     ON_WM_QUERYDRAGICON()
     ON_BN_CLICKED(IDC_BUTTON1, &CMFCApplication2Dlg::OnBnClickedButton1)
     ON_BN_CLICKED(IDC_BUTTON_FILE, &CMFCApplication2Dlg::OnBnClickedButtonFile)
+    ON_BN_CLICKED(IDC_BUTTON_SAVE, &CMFCApplication2Dlg::OnBnClickedButtonSave)
     ON_BN_CLICKED(IDC_BUTTON_CLEAR, &CMFCApplication2Dlg::OnBnClickedClear)
     ON_LBN_SELCHANGE(IDC_LIST_HISTORY, &CMFCApplication2Dlg::OnLbnSelchangeListHistory)
 END_MESSAGE_MAP()
@@ -255,7 +256,8 @@ void CMFCApplication2Dlg::OnBnClickedButton1()
 
         CString originalLine = line;
         CString lower = line;
-        lower.MakeLower();
+        CharLower(lower.GetBuffer());
+        lower.ReleaseBuffer();
 
         bool hasLatin = false;
         for (int i = 0; i < lower.GetLength(); i++)
@@ -290,12 +292,17 @@ void CMFCApplication2Dlg::OnBnClickedButton1()
         {
             L"любимый", L"цвет", L"еда", L"блюдо",
             L"кличка", L"животное", L"фильм",
-            L"песня", L"музыка", L"город"
+            L"песня", L"музыка", L"город",
+            L"лет", L"возраст", L"сколько", L"старый",
+            L"родился", L"рост", L"вес", L"имя",    
+            L"день", L"месяц",
         };
 
         std::vector<CString> specificWords =
         {
-            L"улица", L"школа", L"страна", L"год", L"дата"
+            L"улица", L"школа", L"страна", L"дата"
+            L"номер", L"адрес", L"учитель", L"больница",
+            L"район", 
         };
 
         for (auto& word : weakWords)
@@ -316,34 +323,52 @@ void CMFCApplication2Dlg::OnBnClickedButton1()
         int Q = (L / 10) + (2 * C) - (2 * G);
         if (Q < 0) Q = 0;
 
+        COLORREF color = GetColorByQ(Q);
+
         CString result, recommendations;
 
         if (Q <= 1)
         {
             result = L"Низкая надёжность";
-            recommendations = L"Добавьте конкретику";
+            recommendations =
+                L"Рекомендации:\r\n"
+                L"— Избегайте общих вопросов о предпочтениях\r\n"
+                L"— Добавьте конкретный факт из вашей биографии\r\n"
+                L"— Используйте название места, даты или события\r\n"
+                L"— Хороший пример: «На какой улице была моя первая школа?»";
         }
         else if (Q <= 4)
         {
             result = L"Средняя надёжность";
-            recommendations = L"Добавьте то, что известно только вам";
+            recommendations =
+                L"Рекомендации:\r\n"
+                L"— Добавьте конкретику, известную только вам\r\n"
+                L"— Уточните место, дату или имя собственное\r\n"
+                L"— Избегайте фактов, которые можно найти в соцсетях\r\n"
+                L"— Хороший пример: «Название улицы, где я жил в 2023 году?»";
         }
         else
         {
             result = L"Высокая надёжность";
-            recommendations = L"Хороший вопрос";
+            recommendations =
+                L"Рекомендации:\r\n"
+                L"— Вопрос сформулирован хорошо\r\n"
+                L"— Убедитесь, что помните ответ точно\r\n"
+                L"— Не сообщайте ответ третьим лицам\r\n";
         }
-
+        
         CString answer =
             L"Оценка: " + result + L"\r\n\r\n" +
             recommendations;
 
-        CString block =
+        CString header =
             L"Вопрос: " + originalLine + L"\r\n\r\n" +
-            answer + L"\r\n\r\n";
+            L"Оценка: " + result + L"\r\n\r\n";
 
-        COLORREF color = GetColorByQ(Q);
-        AppendColoredText(block, color);
+        CString recs = recommendations + L"\r\n\r\n";
+
+        AppendColoredText(header, color);
+        AppendColoredText(recs, RGB(0, 0, 0));
 
         AddToHistory(originalLine, answer);
 
@@ -431,5 +456,69 @@ void CMFCApplication2Dlg::OnLbnSelchangeListHistory()
     {
         SetDlgItemText(IDC_EDIT_RESULT,
             m_historyData[sel].answer);
+    }
+}
+
+void CMFCApplication2Dlg::OnBnClickedButtonSave()
+{
+    if (m_historyData.empty())
+    {
+        AfxMessageBox(L"История пуста");
+        return;
+    }
+
+    CFileDialog dlg(
+        FALSE,
+        L"txt",
+        L"history.txt",
+        OFN_OVERWRITEPROMPT,
+        L"Text files (*.txt)|*.txt||"
+    );
+
+    if (dlg.DoModal() == IDOK)
+    {
+        // Собираем весь текст в одну строку
+        CString allText;
+        for (const auto& item : m_historyData)
+        {
+            allText +=
+                L"Вопрос: " + item.question + L"\r\n" +
+                item.answer + L"\r\n\r\n";
+        }
+
+        // Конвертируем из Unicode в UTF-8
+        int size = WideCharToMultiByte(
+            CP_UTF8, 0,
+            allText, -1,
+            NULL, 0,
+            NULL, NULL
+        );
+
+        std::vector<char> buffer(size);
+        WideCharToMultiByte(
+            CP_UTF8, 0,
+            allText, -1,
+            buffer.data(), size,
+            NULL, NULL
+        );
+
+        CFile file;
+        if (file.Open(dlg.GetPathName(),
+            CFile::modeCreate | CFile::modeWrite | CFile::typeBinary))
+        {
+            // Пишем UTF-8 BOM
+            unsigned char bom[] = { 0xEF, 0xBB, 0xBF };
+            file.Write(bom, 3);
+
+            // Пишем текст (без финального нулевого байта)
+            file.Write(buffer.data(), size - 1);
+            file.Close();
+
+            AfxMessageBox(L"История успешно сохранена");
+        }
+        else
+        {
+            AfxMessageBox(L"Ошибка сохранения файла");
+        }
     }
 }

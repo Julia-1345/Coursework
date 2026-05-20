@@ -21,15 +21,16 @@ CMFCApplication2App::CMFCApplication2App()
 BOOL CMFCApplication2App::InitInstance()
 {
 	INITCOMMONCONTROLSEX InitCtrls;
+
 	InitCtrls.dwSize = sizeof(InitCtrls);
 	InitCtrls.dwICC = ICC_WIN95_CLASSES;
+
 	InitCommonControlsEx(&InitCtrls);
 
 	CWinApp::InitInstance();
 
 	AfxEnableControlContainer();
 
-	// ✔ ОБЯЗАТЕЛЬНО для RichEdit
 	AfxInitRichEdit2();
 
 	CShellManager* pShellManager = new CShellManager;
