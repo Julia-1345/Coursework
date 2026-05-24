@@ -477,7 +477,6 @@ void CMFCApplication2Dlg::OnBnClickedButtonSave()
 
     if (dlg.DoModal() == IDOK)
     {
-        // Собираем весь текст в одну строку
         CString allText;
         for (const auto& item : m_historyData)
         {
@@ -486,7 +485,6 @@ void CMFCApplication2Dlg::OnBnClickedButtonSave()
                 item.answer + L"\r\n\r\n";
         }
 
-        // Конвертируем из Unicode в UTF-8
         int size = WideCharToMultiByte(
             CP_UTF8, 0,
             allText, -1,
@@ -506,11 +504,9 @@ void CMFCApplication2Dlg::OnBnClickedButtonSave()
         if (file.Open(dlg.GetPathName(),
             CFile::modeCreate | CFile::modeWrite | CFile::typeBinary))
         {
-            // Пишем UTF-8 BOM
             unsigned char bom[] = { 0xEF, 0xBB, 0xBF };
             file.Write(bom, 3);
 
-            // Пишем текст (без финального нулевого байта)
             file.Write(buffer.data(), size - 1);
             file.Close();
 
